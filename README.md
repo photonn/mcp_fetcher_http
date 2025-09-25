@@ -1,17 +1,45 @@
 # MCP HTTP Fetcher Server
 
-A simple Model Context Protocol (MCP) server that fetches web pages and converts them to Markdown format. This server allows connecting applications to send URLs and receive the page content converted to clean, readable Markdown.
+A Model Context Protocol (MCP) server that fetches web pages and converts them to Markdown format. This server supports both **SSE (Server-Sent Events)** and **Stdio** protocols, making it suitable for web deployments, Kubernetes environments, desktop clients, and sidecar patterns.
 
 ## Features
 
+- ✅ **Dual Protocol Support**: SSE (default) and Stdio protocols
 - ✅ **HTTP/HTTPS URL fetching**: Download content from any web URL
 - ✅ **HTML to Markdown conversion**: Clean conversion using html2text
 - ✅ **MCP Protocol compliance**: Follows MCP server standards
+- ✅ **Kubernetes ready**: SSE protocol with health checks and graceful scaling
+- ✅ **Sidecar friendly**: Stdio protocol for process-to-process communication
 - ✅ **Error handling**: Robust error handling for network issues
 - ✅ **Docker support**: Ready-to-run Docker container
 - ✅ **Async operation**: Non-blocking HTTP requests
 - ✅ **Modular architecture**: Clean separation of concerns for maintainability
-- ✅ **Protocol extensibility**: Abstract interface for future protocol implementations
+
+## Quick Start
+
+### SSE Protocol (Default - Web/Kubernetes Deployments)
+```bash
+# Start with SSE protocol (default)
+python app/server.py
+
+# Custom host/port for Kubernetes
+python app/server.py --protocol sse --host 0.0.0.0 --port 8000
+```
+
+### Stdio Protocol (Desktop Clients/Sidecars)
+```bash
+# Start with stdio protocol
+python app/server.py --protocol stdio
+```
+
+## Protocol Overview
+
+| Protocol | Use Case | Deployment | Scaling |
+|----------|----------|------------|---------|
+| **SSE (Default)** | Web apps, APIs, Kubernetes | HTTP server with endpoints | Horizontal scaling, load balancing |
+| **Stdio** | Desktop clients, sidecars | Process communication | Single client per process |
+
+For detailed protocol documentation, see [docs/PROTOCOLS.md](docs/PROTOCOLS.md).
 
 ## Project Structure
 
@@ -25,8 +53,11 @@ mcp_fetcher_http/
 │   │   └── converter.py   # HTML to Markdown conversion
 │   ├── protocols/         # Protocol implementations
 │   │   ├── base.py        # Abstract protocol interface
-│   │   └── stdio.py       # Standard I/O protocol implementation
+│   │   ├── stdio.py       # Standard I/O protocol implementation
+│   │   └── sse.py         # Server-Sent Events protocol implementation
 │   └── server.py          # New modular server entry point
+├── docs/                  # Documentation
+│   └── PROTOCOLS.md       # Comprehensive protocol guide
 ├── tests/                 # Test suite
 │   ├── test_fetcher.py    # Tests for URL fetching
 │   ├── test_converter.py  # Tests for HTML conversion
@@ -41,10 +72,9 @@ mcp_fetcher_http/
 
 ### Entry Points
 
-- **`python server.py`** - Backward-compatible entry point (recommended for existing setups)
-- **`python app/server.py`** - New modular entry point (recommended for new installations)
+- **`python app/server.py`** - Primary entry point with full protocol support
+- **`python server.py`** - Legacy entry point (limited protocol options)
 - **`./run_server.sh`** - Convenience script with dependency management
-- **`./run_server.sh --new`** - Convenience script using new modular structure
 
 ## Installation
 
@@ -63,7 +93,15 @@ pip install -r requirements.txt
 
 3. Run the server:
 ```bash
-python server.py
+# SSE protocol (default - for web/Kubernetes deployments)
+python app/server.py
+
+# Stdio protocol (for desktop clients)
+python app/server.py --protocol stdio
+
+# Custom SSE configuration
+python app/server.py --protocol sse --host 0.0.0.0 --port 8080
+
 # OR use the convenience script:
 ./run_server.sh
 ```
@@ -77,7 +115,11 @@ docker build -t mcp-fetcher-http .
 
 2. Run the container:
 ```bash
-docker run -it mcp-fetcher-http
+# SSE protocol (default)
+docker run -p 8000:8000 mcp-fetcher-http
+
+# Stdio protocol
+docker run -it mcp-fetcher-http python app/server.py --protocol stdio
 ```
 
 **Note:** Docker build may require internet access to install Python packages. In restricted environments, use the direct Python installation method.
@@ -88,32 +130,45 @@ The server exposes a single MCP tool called `fetch_url` that accepts a URL param
 
 ### MCP Client Configuration
 
-Add the server to your MCP client configuration (example for Claude Desktop):
-
+#### For SSE Protocol (Web/Kubernetes deployments)
 ```json
 {
   "mcpServers": {
     "http-fetcher": {
-      "command": "python",
-      "args": ["/path/to/mcp_fetcher_http/server.py"],
-      "description": "HTTP fetcher that converts web pages to Markdown"
+      "command": "curl",
+      "args": ["-N", "-H", "Accept: text/event-stream", "http://localhost:8000/sse"],
+      "description": "HTTP fetcher using SSE protocol"
     }
   }
 }
 ```
 
-For new installations using the modular structure:
+#### For Stdio Protocol (Desktop clients)
 ```json
 {
   "mcpServers": {
     "http-fetcher": {
       "command": "python",
-      "args": ["/path/to/mcp_fetcher_http/app/server.py"],
-      "description": "HTTP fetcher that converts web pages to Markdown (modular version)"
+      "args": ["/path/to/mcp_fetcher_http/app/server.py", "--protocol", "stdio"],
+      "description": "HTTP fetcher using stdio protocol"
     }
   }
 }
 ```
+
+### Command Line Options
+
+```bash
+python app/server.py --help
+```
+
+Available options:
+- `--protocol {stdio,sse}` - Communication protocol (default: sse)
+- `--host HOST` - Host to bind SSE server (default: localhost)
+- `--port PORT` - Port for SSE server (default: 8000)  
+- `--endpoint ENDPOINT` - SSE message endpoint (default: /messages)
+- `--server-name NAME` - Server identifier
+- `--server-version VERSION` - Server version
 
 ### Tool Schema
 
