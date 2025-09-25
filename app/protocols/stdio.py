@@ -7,7 +7,7 @@ This module implements the MCP protocol using stdin/stdout communication.
 import logging
 import sys
 import os
-from typing import List
+from typing import Any, Dict, List
 
 # Add parent directory to path to enable imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
@@ -15,12 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
-from mcp.types import (
-    CallToolRequest,
-    CallToolResult,
-    Tool,
-    TextContent,
-)
+from mcp.types import TextContent, Tool
 
 from .base import MCPProtocol
 from app.core import URLFetcher, HTMLToMarkdownConverter
@@ -55,9 +50,9 @@ class StdioProtocol(MCPProtocol):
             return self.get_available_tools()
         
         @self.app.call_tool()
-        async def handle_call_tool(request: CallToolRequest) -> CallToolResult:
+        async def handle_call_tool(tool_name: str, arguments: Dict[str, Any] | None):
             """Handle tool execution requests."""
-            return await self.handle_tool_call(request)
+            return await self.handle_tool_call(tool_name, arguments or {})
     
     def get_available_tools(self) -> List[Tool]:
         """Get the list of available tools.
@@ -82,43 +77,24 @@ class StdioProtocol(MCPProtocol):
             )
         ]
     
-    async def handle_tool_call(self, request: CallToolRequest) -> CallToolResult:
-        """Handle a tool call request.
-        
-        Args:
-            request: The tool call request
-            
-        Returns:
-            Result of the tool execution
-        """
-        if request.params.name == "fetch_url":
-            url = request.params.arguments.get("url") if request.params.arguments else None
-            
-            if not url:
-                return CallToolResult(
-                    content=[TextContent(type="text", text="Error: URL parameter is required")]
-                )
-            
-            try:
-                # Fetch the HTML content
-                html_content = await self.fetcher.fetch_content(str(url))
-                
-                # Convert to Markdown
-                markdown_content = self.converter.convert(html_content)
-                
-                return CallToolResult(
-                    content=[TextContent(type="text", text=markdown_content)]
-                )
-            except Exception as e:
-                error_message = f"Error fetching URL: {str(e)}"
-                logger.error(error_message)
-                return CallToolResult(
-                    content=[TextContent(type="text", text=error_message)]
-                )
-        else:
-            return CallToolResult(
-                content=[TextContent(type="text", text=f"Unknown tool: {request.params.name}")]
-            )
+    async def handle_tool_call(self, name: str, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Handle a tool call request."""
+
+        if name != "fetch_url":
+            raise ValueError(f"Unknown tool: {name}")
+
+        url = arguments.get("url")
+        if not url:
+            raise ValueError("URL parameter is required")
+
+        try:
+            html_content = await self.fetcher.fetch_content(str(url))
+            markdown_content = self.converter.convert(html_content)
+            return [TextContent(type="text", text=markdown_content)]
+        except Exception as exc:
+            error_message = f"Error fetching URL: {exc}"
+            logger.error(error_message)
+            raise RuntimeError(error_message)
     
     async def run(self) -> None:
         """Run the stdio protocol server."""

@@ -33,14 +33,13 @@ async def test_stdio_protocol():
         print("✓ Stdio protocol tools are correctly configured")
         
         # Test tool call with mock data
-        from mcp.types import CallToolRequest, CallToolRequestParams
-        
-        # Test invalid URL
-        params = CallToolRequestParams(name="fetch_url", arguments={"url": "invalid-url"})
-        request = CallToolRequest(params=params)
-        result = await protocol.handle_tool_call(request)
-        assert "Error fetching URL" in result.content[0].text
-        print("✓ Stdio protocol error handling works")
+        try:
+            await protocol.handle_tool_call("fetch_url", {"url": "invalid-url"})
+        except RuntimeError as error:
+            assert "Invalid URL" in str(error)
+            print("✓ Stdio protocol error handling works")
+        else:
+            raise AssertionError("Expected runtime error for invalid URL")
         
         # Test HTML conversion directly
         sample_html = "<h1>Test</h1><p>Sample content</p>"
@@ -73,14 +72,13 @@ async def test_sse_protocol():
         print("✓ SSE protocol tools are correctly configured")
         
         # Test tool call with mock data
-        from mcp.types import CallToolRequest, CallToolRequestParams
-        
-        # Test invalid URL
-        params = CallToolRequestParams(name="fetch_url", arguments={"url": "invalid-url"})
-        request = CallToolRequest(params=params)
-        result = await protocol.handle_tool_call(request)
-        assert "Error fetching URL" in result.content[0].text
-        print("✓ SSE protocol error handling works")
+        try:
+            await protocol.handle_tool_call("fetch_url", {"url": "invalid-url"})
+        except RuntimeError as error:
+            assert "Invalid URL" in str(error)
+            print("✓ SSE protocol error handling works")
+        else:
+            raise AssertionError("Expected runtime error for invalid URL")
         
         # Test HTML conversion directly
         sample_html = "<h1>Test</h1><p>Sample content</p>"
