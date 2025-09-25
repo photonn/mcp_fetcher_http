@@ -102,7 +102,7 @@ class SseProtocol(MCPProtocol):
         except Exception as exc:
             error_message = f"Error fetching URL: {exc}"
             logger.error(error_message)
-            raise RuntimeError(error_message)
+            raise RuntimeError(error_message) from exc
     
     async def run(self) -> None:
         """Run the SSE protocol server."""
