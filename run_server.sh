@@ -19,6 +19,12 @@ if [ ! -f ".deps_installed" ]; then
     touch .deps_installed
 fi
 
-# Run the server
-echo "Running MCP server (communicates via stdin/stdout)..."
-python server.py
+# Allow choice of entry point (backward compatible by default)
+if [ "$1" = "--new" ]; then
+    echo "Running new modular MCP server..."
+    python app/server.py
+else
+    echo "Running MCP server (backward compatible mode)..."
+    echo "Use './run_server.sh --new' to use the new modular structure"
+    python server.py
+fi

@@ -10,6 +10,41 @@ A simple Model Context Protocol (MCP) server that fetches web pages and converts
 - ✅ **Error handling**: Robust error handling for network issues
 - ✅ **Docker support**: Ready-to-run Docker container
 - ✅ **Async operation**: Non-blocking HTTP requests
+- ✅ **Modular architecture**: Clean separation of concerns for maintainability
+- ✅ **Protocol extensibility**: Abstract interface for future protocol implementations
+
+## Project Structure
+
+The project follows Python best practices with a clean, modular architecture:
+
+```
+mcp_fetcher_http/
+├── app/                    # Main application package
+│   ├── core/              # Core business logic
+│   │   ├── fetcher.py     # URL fetching functionality
+│   │   └── converter.py   # HTML to Markdown conversion
+│   ├── protocols/         # Protocol implementations
+│   │   ├── base.py        # Abstract protocol interface
+│   │   └── stdio.py       # Standard I/O protocol implementation
+│   └── server.py          # New modular server entry point
+├── tests/                 # Test suite
+│   ├── test_fetcher.py    # Tests for URL fetching
+│   ├── test_converter.py  # Tests for HTML conversion
+│   └── test_server.py     # Integration tests
+├── examples/              # Example usage and demos
+│   ├── demo.py           # Functionality demonstration
+│   └── mcp_config_example.json
+├── server.py             # Backward-compatible entry point
+├── requirements.txt      # Python dependencies
+└── Dockerfile           # Container configuration
+```
+
+### Entry Points
+
+- **`python server.py`** - Backward-compatible entry point (recommended for existing setups)
+- **`python app/server.py`** - New modular entry point (recommended for new installations)
+- **`./run_server.sh`** - Convenience script with dependency management
+- **`./run_server.sh --new`** - Convenience script using new modular structure
 
 ## Installation
 
@@ -67,6 +102,19 @@ Add the server to your MCP client configuration (example for Claude Desktop):
 }
 ```
 
+For new installations using the modular structure:
+```json
+{
+  "mcpServers": {
+    "http-fetcher": {
+      "command": "python",
+      "args": ["/path/to/mcp_fetcher_http/app/server.py"],
+      "description": "HTTP fetcher that converts web pages to Markdown (modular version)"
+    }
+  }
+}
+```
+
 ### Tool Schema
 
 ```json
@@ -106,18 +154,20 @@ The server will return the page content converted to Markdown format.
 Run the included test scripts to verify functionality:
 
 ```bash
-# Run basic functionality tests
-python test_server.py
+# Run all tests (recommended)
+python tests/test_server.py      # Integration tests
+python tests/test_fetcher.py     # URL fetching tests  
+python tests/test_converter.py   # HTML conversion tests
 
 # Run demo to see HTML to Markdown conversion
-python demo.py
+python examples/demo.py
 ```
 
 ### Testing the MCP Server
 
 The server communicates via stdin/stdout using the MCP protocol. For basic testing:
 
-1. Start the server: `python server.py`
+1. Start the server: `python server.py` (or `python app/server.py`)
 2. The server will wait for MCP protocol messages on stdin
 3. Send a list_tools request to see available tools
 4. Send a call_tool request with the fetch_url tool
