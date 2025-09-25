@@ -1,0 +1,11 @@
+# Core MCP (Model Context Protocol) server dependencies
+mcp>=1.0.0
+
+# HTTP client for fetching web pages
+aiohttp>=3.9.0
+
+# HTML to Markdown conversion
+html2text>=2020.1.16
+
+# Additional utilities for robust operation
+typing-extensions>=4.0.0
