@@ -1,14 +1,9 @@
-"""
-Base protocol interface for MCP communication.
+"""Base protocol interface for MCP communication."""
 
-This module defines the abstract interface that all MCP protocol
-implementations must follow.
-"""
-
-import asyncio
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
-from mcp.types import Tool, CallToolRequest, CallToolResult
+
+from mcp.types import TextContent, Tool
 
 
 class MCPProtocol(ABC):
@@ -43,13 +38,6 @@ class MCPProtocol(ABC):
         pass
     
     @abstractmethod
-    async def handle_tool_call(self, request: CallToolRequest) -> CallToolResult:
-        """Handle a tool call request.
-        
-        Args:
-            request: The tool call request
-            
-        Returns:
-            Result of the tool execution
-        """
+    async def handle_tool_call(self, name: str, arguments: Dict[str, Any]) -> List[TextContent]:
+        """Handle a tool call request."""
         pass
