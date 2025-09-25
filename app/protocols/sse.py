@@ -1,7 +1,8 @@
 """
-Standard input/output protocol implementation for MCP.
+Server-Sent Events (SSE) protocol implementation for MCP.
 
-This module implements the MCP protocol using stdin/stdout communication.
+This module implements the MCP protocol using SSE communication.
+SSE is ideal for web-based deployments and Kubernetes environments.
 """
 
 import logging
@@ -14,7 +15,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
-from mcp.server.stdio import stdio_server
+from mcp.server.sse import SseServerTransport
 from mcp.types import (
     CallToolRequest,
     CallToolResult,
@@ -28,17 +29,24 @@ from app.core import URLFetcher, HTMLToMarkdownConverter
 logger = logging.getLogger(__name__)
 
 
-class StdioProtocol(MCPProtocol):
-    """MCP protocol implementation using standard input/output."""
+class SseProtocol(MCPProtocol):
+    """MCP protocol implementation using Server-Sent Events (SSE)."""
     
-    def __init__(self, server_name: str = "mcp-fetcher-http", server_version: str = "1.0.0"):
-        """Initialize the stdio protocol.
+    def __init__(self, server_name: str = "mcp-fetcher-http", server_version: str = "1.0.0", 
+                 host: str = "localhost", port: int = 8000, endpoint: str = "/messages"):
+        """Initialize the SSE protocol.
         
         Args:
             server_name: Name of the MCP server
             server_version: Version of the server
+            host: Host to bind the server to
+            port: Port to bind the server to
+            endpoint: SSE endpoint path for message posting
         """
         super().__init__(server_name, server_version)
+        self.host = host
+        self.port = port
+        self.endpoint = endpoint
         self.app = Server(server_name)
         self.fetcher = URLFetcher()
         self.converter = HTMLToMarkdownConverter()
@@ -121,17 +129,61 @@ class StdioProtocol(MCPProtocol):
             )
     
     async def run(self) -> None:
-        """Run the stdio protocol server."""
-        async with stdio_server() as (read_stream, write_stream):
-            await self.app.run(
-                read_stream,
-                write_stream,
-                InitializationOptions(
-                    server_name=self.server_name,
-                    server_version=self.server_version,
-                    capabilities=self.app.get_capabilities(
-                        notification_options=NotificationOptions(),
-                        experimental_capabilities={},
-                    ),
-                ),
-            )
+        """Run the SSE protocol server."""
+        logger.info(f"Starting MCP SSE server on {self.host}:{self.port}")
+        logger.info(f"SSE endpoint: {self.endpoint}")
+        logger.info("Send Ctrl+C to stop the server")
+        
+        # Create SSE transport
+        transport = SseServerTransport(endpoint=self.endpoint)
+        
+        # Run the server with SSE transport
+        import uvicorn
+        from starlette.applications import Starlette
+        from starlette.routing import Route, Mount
+        from starlette.responses import Response
+        from starlette.requests import Request
+        
+        # Create Starlette app for SSE server
+        async def handle_sse(request: Request):
+            """Handle SSE connections."""
+            async with transport.connect_sse(
+                request.scope, request.receive, request._send
+            ) as streams:
+                await self.app.run(
+                    streams[0], streams[1], 
+                    InitializationOptions(
+                        server_name=self.server_name,
+                        server_version=self.server_version,
+                        capabilities=self.app.get_capabilities(
+                            notification_options=NotificationOptions(),
+                            experimental_capabilities={},
+                        ),
+                    )
+                )
+            # Return empty response to avoid NoneType error
+            return Response()
+        
+        async def health_check(request):
+            """Health check endpoint."""
+            return Response("OK", status_code=200)
+        
+        # Create routes
+        routes = [
+            Route("/sse", endpoint=handle_sse, methods=["GET"]),
+            Mount(self.endpoint, app=transport.handle_post_message),
+            Route("/health", health_check, methods=["GET"]),
+        ]
+        
+        app = Starlette(routes=routes)
+        
+        # Run with uvicorn
+        config = uvicorn.Config(
+            app=app,
+            host=self.host,
+            port=self.port,
+            log_level="info",
+            access_log=True
+        )
+        server = uvicorn.Server(config)
+        await server.serve()
