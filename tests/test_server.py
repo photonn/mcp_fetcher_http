@@ -7,7 +7,12 @@ This script tests the core functionality of fetching URLs and converting to Mark
 
 import asyncio
 import sys
-from server import fetch_and_convert_url, is_valid_url
+import os
+
+# Add parent directory to path to import app modules
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from app.core import URLFetcher, HTMLToMarkdownConverter, is_valid_url
 
 
 async def test_url_validation():
@@ -46,14 +51,22 @@ async def test_fetch_functionality():
     
     # Test with a simple HTML string to verify conversion logic
     try:
+        fetcher = URLFetcher()
+        converter = HTMLToMarkdownConverter()
+        
         # Test URL validation for fetch function
         invalid_url = "not-a-url"
         try:
-            result = await fetch_and_convert_url(invalid_url)
+            result = await fetcher.fetch_content(invalid_url)
             print("✗ Should have failed with invalid URL")
             return False
         except ValueError as e:
             print(f"✓ Correctly rejected invalid URL: {e}")
+        
+        # Test HTML to Markdown conversion with sample HTML
+        sample_html = "<h1>Test</h1><p>This is a <strong>test</strong>.</p>"
+        markdown_result = converter.convert(sample_html)
+        print(f"✓ HTML to Markdown conversion works: {len(markdown_result)} characters")
         
         # Test HTTP status error handling (simulate with a mock)
         print("✓ URL validation in fetch function works correctly")

@@ -19,6 +19,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the application code
+COPY app/ ./app/
 COPY server.py .
 
 # Create a non-root user for security
@@ -29,5 +30,5 @@ USER app
 # Expose port (if needed for future HTTP interface)
 EXPOSE 3000
 
-# Command to run the server
+# Command to run the server (using backward compatible entry point)
 CMD ["python", "server.py"]

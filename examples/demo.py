@@ -5,8 +5,13 @@ This demonstrates the core functionality of URL fetching and HTML to Markdown co
 """
 
 import asyncio
-import html2text
-from server import fetch_and_convert_url, is_valid_url
+import sys
+import os
+
+# Add parent directory to path to import app modules
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from app.core import URLFetcher, HTMLToMarkdownConverter, is_valid_url
 
 
 def create_sample_html():
@@ -46,15 +51,12 @@ def test_html_to_markdown_conversion():
     print("Testing HTML to Markdown conversion...")
     print("=" * 50)
     
-    # Configure html2text converter (same as in server)
-    h = html2text.HTML2Text()
-    h.ignore_links = False
-    h.ignore_images = False
-    h.body_width = 0  # Don't wrap lines
+    # Create converter instance
+    converter = HTMLToMarkdownConverter()
     
     # Convert sample HTML
     html_content = create_sample_html()
-    markdown_result = h.handle(html_content)
+    markdown_result = converter.convert(html_content)
     
     print("Original HTML:")
     print(html_content[:200] + "...")
@@ -89,7 +91,8 @@ async def demo_server_functionality():
     print("\nError Handling Test:")
     try:
         # Test with invalid URL
-        await fetch_and_convert_url("invalid-url")
+        fetcher = URLFetcher()
+        await fetcher.fetch_content("invalid-url")
     except ValueError as e:
         print(f"  ✓ Correctly handled invalid URL: {e}")
     
@@ -111,7 +114,7 @@ async def main():
     print("\n" + "=" * 60)
     print("Demo completed successfully! 🎉")
     print("\nTo run the actual MCP server, use:")
-    print("  python server.py")
+    print("  python app/server.py")
     print("\nTo build and run with Docker:")
     print("  docker build -t mcp-fetcher-http .")
     print("  docker run -it mcp-fetcher-http")
