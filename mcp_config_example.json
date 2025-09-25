@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "http-fetcher": {
+      "command": "python",
+      "args": ["/path/to/mcp_fetcher_http/server.py"],
+      "description": "HTTP fetcher that converts web pages to Markdown"
+    }
+  }
+}
